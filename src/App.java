@@ -1,7 +1,7 @@
 
 public class App {
     public static void main(String[] args) throws Exception {
-        int numClients = 10;
+        int numClients = 3000;
 
         ClientThread[] clients = new ClientThread[numClients];
 
@@ -11,6 +11,7 @@ public class App {
         }
         for (int i = 0; i < numClients; i++) {
             clients[i].start();
+            Thread.sleep(0);
         }
     }
 }

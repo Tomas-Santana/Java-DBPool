@@ -1,55 +1,47 @@
-import java.util.HashMap;
-import java.util.ArrayList;
 import PropertyHandler.PropertyHandler;
 import Pool.PoolManager;
 
 public class ClientThread extends Thread {
-    private static PropertyHandler prop = new PropertyHandler("src/ClientThread.properties");
 
     private String DBID;
-
     private int ID;
-
-    private ArrayList<HashMap<String, String>> actions = new ArrayList<HashMap<String, String>>();
+    private static String[] actions = {"query", "release", "sleep", "sleep", "sleep", "query", "query", "query"};
 
     public ClientThread(String DBID, int ID) {
         this.ID = ID;
         this.DBID = DBID;
-        for (int i = 0; i<5; i++) {
-            HashMap<String, String> action = new HashMap<String, String>();
-            action.put("action", prop.getProp("ACTION" + i, "Failed"));
-            action.put("value", prop.getProp("VALUE" + i, "No value"));
-            actions.add(action);
-        }
     }
 
     @Override
     public void run() {
         PoolManager poolManager = new PoolManager(this.ID);
 
-        poolManager.getConnection(DBID);
-
+        poolManager.conn = PoolManager.getConnection(this.DBID, this.ID);
         while (true) {
-            int actionIndex = (int) (Math.random() * actions.size());
-            HashMap<String, String> action = actions.get(actionIndex);
+            int actionIndex = (int) (Math.random() * actions.length);
+            String action = actions[actionIndex]; 
 
-            if (action.get("action").equals("query")) {
-                poolManager.executeQuery(action.get("value"));
+            if (action.equals("query")) {
+                poolManager.executeQuery("SELECT 1");
             } 
-            else if (action.get("action").equals("release")) {
-                poolManager.releaseConnection();
+            else if (action.equals("release")) {
+                PoolManager.releaseConnection(poolManager);
                 break;
             } 
-            else if (action.get("action").equals("sleep")) {
+            else if (action.equals("sleep")) {
                 try {
-                    Thread.sleep(Integer.parseInt(action.get("value")));
-                    System.out.println("Client #" + ID + " slept for " + action.get("value") + "ms");
+                    Thread.sleep(100);
+                    System.out.println("Pool Manager #" + ID + " slept for 100 ms");
                 } catch (InterruptedException e) {
                     System.err.println("Sleep Failed");
                 }
             }
-            else {
-                System.err.println("Invalid action: " + action.get("action"));
+
+
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                System.err.println("Sleep Failed");
             }
         }
     }

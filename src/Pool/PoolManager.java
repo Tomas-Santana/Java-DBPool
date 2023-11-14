@@ -1,66 +1,73 @@
 package Pool;
 
-import java.sql.Connection;
 import java.sql.ResultSet;
-
-import javax.xml.transform.Result;
 
 public class PoolManager {
 
-    private Pool pool = Pool.INSTANCE;
-    private DBConn conn;
-    private int ID;
+    private static Pool pool = Pool.INSTANCE;
+    public DBConn conn;
+    public int ID;
 
     public PoolManager(int ID){
         this.ID = ID;
     }
 
-    public synchronized boolean getConnection(String DBID) {
+    public static synchronized DBConn getConnection(String DBID, int PMID) {
         while (true) {
             for (DBConn connection : pool.connections) {
-                if (connection.isAvailable && connection.Connect(DBID)) {
-                    this.conn = connection;
-
-                    System.out.println("Pool manager #" + ID + " got connection from pool, free connections: " + getFreeConnections() + " Pool size: " + pool.connections.size());
-
-                    tryShrinkPool();
-                    return true;
+                if (connection.isAvailable) {
+                    System.out.println("Pool manager #" + PMID + " got connection "+ connection.connID +" from pool, free connections: " + (getFreeConnections() - 1) + " Pool size: " + pool.connections.size());
+                    PoolManager.tryShrinkPool(PMID);
+                    connection.Connect(DBID);
+                    return connection;
                 }
             }
-            tryExtendPool();
+            tryExtendPool(PMID);
             continue;
         }
     }
-    public synchronized boolean releaseConnection() {
-        if (conn.Disconnect()) {
-            tryShrinkPool();
-            this.conn = null;
+    public static boolean releaseConnection(PoolManager PMI) {
+        if (PMI.conn.Disconnect()) {
+            PoolManager.tryShrinkPool(PMI.ID);
+            System.out.println("Pool manager #" + PMI.ID + " released connection,Pool size: " + pool.connections.size());
+            PMI.conn = null;
             return true;
         }
         return false;
     }
-    private synchronized boolean tryExtendPool() {
+
+    private static synchronized boolean tryExtendPool(int PMID) {
         if (pool.connections.size() < pool.MAX_CONN) {
             for (int i = 0; i < pool.GROWTH_RATE; i++) {
-                DBConn conn = new DBConn();
+                DBConn conn = new DBConn(i + pool.connections.size());
                 pool.connections.add(conn);
             }
-            System.out.println("Pool manager #" + ID + " extended pool, new size: " + pool.connections.size() + " Free connections: " + getFreeConnections());
+            System.out.println("Pool manager #" + PMID + " extended pool. free connections: " + getFreeConnections() + " Pool size: " + getFreeConnections());
             return true;
         }
         return false;
     }
-    private synchronized boolean tryShrinkPool() {
-        if (getFreeConnections() < pool.MAX_CONN - pool.GROWTH_RATE*2) {
-            for (int i = 0; i < pool.GROWTH_RATE; i++) {
-                pool.connections.remove(pool.connections.size() - 1);
+    private static synchronized boolean tryShrinkPool(int PMID) {
+        int freeConnections = getFreeConnections();
+
+        if (freeConnections > pool.MAX_FREE_CONN) {
+            int numToRemove = pool.GROWTH_RATE;
+
+            for (int i = 0; i < numToRemove; i++) {
+                for (DBConn conn : pool.connections) {
+                    if (conn.isAvailable) {
+                        pool.connections.remove(conn);
+                        
+                        break;
+                    }
+                }
             }
-            System.out.println("Pool manager #" + ID + " shrinked pool, new size: " + pool.connections.size() + " Free connections: " + getFreeConnections());
+            System.out.println("Pool manager #" + PMID + " shrinked pool, free connections: " + getFreeConnections() + " Pool size: " + pool.connections.size());
             return true;
         }
         return false;
     }
-    private synchronized int getFreeConnections() {
+    private static synchronized int getFreeConnections() {
         int freeConnections = 0;
         for (DBConn conn : pool.connections) {
             if (conn.isAvailable) {
@@ -68,6 +75,9 @@ public class PoolManager {
             }
         }
         return freeConnections;
+    }
+    public static synchronized boolean isPoolFull() {
+        return pool.connections.size() == pool.MAX_CONN && getFreeConnections() == 0;
     }
     public boolean executeQuery(String query) {
         System.out.println("Pool manager #" + ID + " executing query.");

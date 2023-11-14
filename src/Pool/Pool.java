@@ -11,14 +11,15 @@ public enum Pool {
     
     protected int GROWTH_RATE = Integer.parseInt(prop.getProp("GROWTH_RATE", "10"));
 
+    protected int MAX_FREE_CONN = Integer.parseInt(prop.getProp("MAX_FREE_CONN", "20"));
+
+    protected int BASE_CONN = Integer.parseInt(prop.getProp("BASE_CONN", "20"));
+
     protected ArrayList<DBConn> connections = new ArrayList<DBConn>();
 
     private Pool() {
-        String baseConnString = prop.getProp("BASE_CONN", "20");
-        int baseConn = Integer.parseInt(baseConnString);
-
-        for (int i = 0; i < baseConn; i++) {
-            DBConn conn = new DBConn();
+        for (int i = 0; i < BASE_CONN; i++) {
+            DBConn conn = new DBConn(i);
             connections.add(conn);
         }
     }

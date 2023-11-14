@@ -14,10 +14,12 @@ public class DBConn {
     private static PropertyHandler prop = new PropertyHandler("src/Pool/Pool.properties");
     private Connection conn;
     private String DBID; 
+    public int connID;
     private ResultSet rs;
     public boolean isAvailable = true;
 
-    protected DBConn() {
+    protected DBConn(int connID) {
+        this.connID = connID;
     }
 
     protected boolean Connect(String DBID) {
@@ -27,16 +29,13 @@ public class DBConn {
             return false;
         }
 
-        String url = "jdbc:postgresql://localhost:5432/Militar";
-        String user = "postgres";
-        String pass = "123456789";
         try {
-            this.DBID = DBID;
-            conn = DriverManager.getConnection(url, user, pass);
             isAvailable = false;
+            this.DBID = DBID;
+            conn = DriverManager.getConnection(connString);
             return true;
         } catch (SQLException e) {
-            System.err.println("Connection Failed: " + url);
+            System.err.println(e);
             return false;
         }
     }
@@ -59,7 +58,7 @@ public class DBConn {
             rs = conn.createStatement().executeQuery(query);
             return true;
         } catch (SQLException e) {
-            System.err.println("Query Failed: " + query);
+            System.err.println("Query Failed: " + e);
             return false;
         }
     }
