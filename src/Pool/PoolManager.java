@@ -1,9 +1,10 @@
 package Pool;
 
 import java.sql.ResultSet;
+import java.util.concurrent.TimeoutException;
+import java.lang.Exception;
 
 public class PoolManager {
-
     private static Pool pool = Pool.INSTANCE;
     public DBConn conn;
     public int ID;
@@ -11,26 +12,32 @@ public class PoolManager {
     public PoolManager(int ID){
         this.ID = ID;
     }
-
-    public static synchronized DBConn getConnection(String DBID, int PMID) {
-        while (true) {
+    public static synchronized DBConn getConnection(int PMID) throws TimeoutException {
+        int retries = 0;  
+        while (retries < Pool.MAX_RETRIES) {
             for (DBConn connection : pool.connections) {
-                if (connection.isAvailable) {
-                    System.out.println("Pool manager #" + PMID + " got connection "+ connection.connID +" from pool, free connections: " + (getFreeConnections() - 1) + " Pool size: " + pool.connections.size());
+                if (connection.isFree) {
+                    System.out.println("Pool manager #" + PMID + " got connection from pool, free connections: " + (getFreeConnections() - 1) + " Pool size: " + pool.connections.size());
+                    connection.book();
                     PoolManager.tryShrinkPool(PMID);
-                    connection.Connect(DBID);
                     return connection;
                 }
             }
             tryExtendPool(PMID);
-            continue;
+            retries++;
+            try {
+                Thread.sleep(20);
+            } catch (Exception e) {
+                System.err.println("Sleep Error");
+            }
         }
+        throw new TimeoutException("Pool Manager #" + PMID + "exceded max retries. Giving up...");
     }
-    public static boolean releaseConnection(PoolManager PMI) {
-        if (PMI.conn.Disconnect()) {
-            PoolManager.tryShrinkPool(PMI.ID);
-            System.out.println("Pool manager #" + PMI.ID + " released connection,Pool size: " + pool.connections.size());
-            PMI.conn = null;
+    public synchronized boolean releaseConnection(PoolManager PM) {
+        if (PM.conn.Disconnect()) {
+            System.out.println("Pool manager #" + PM.ID + " released connection,Pool size: " + pool.connections.size());
+            PoolManager.tryShrinkPool(PM.ID);
+            PM.conn = null;
             return true;
         }
         return false;
@@ -55,7 +62,7 @@ public class PoolManager {
 
             for (int i = 0; i < numToRemove; i++) {
                 for (DBConn conn : pool.connections) {
-                    if (conn.isAvailable) {
+                    if (conn.isFree) {
                         pool.connections.remove(conn);
                         
                         break;
@@ -70,17 +77,20 @@ public class PoolManager {
     private static synchronized int getFreeConnections() {
         int freeConnections = 0;
         for (DBConn conn : pool.connections) {
-            if (conn.isAvailable) {
+            if (conn.isFree) {
                 freeConnections++;
             }
         }
         return freeConnections;
     }
+    public boolean connect(String DBID) {
+        return conn.Connect(DBID);
+    }
     public static synchronized boolean isPoolFull() {
         return pool.connections.size() == pool.MAX_CONN && getFreeConnections() == 0;
     }
     public boolean executeQuery(String query) {
-        System.out.println("Pool manager #" + ID + " executing query.");
+        // System.out.println("Pool manager #" + ID + " executing query.");
         return conn.QueryFromString(query);
     }
     public ResultSet getResultSet() {

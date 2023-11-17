@@ -16,7 +16,7 @@ public class DBConn {
     private String DBID; 
     public int connID;
     private ResultSet rs;
-    public boolean isAvailable = true;
+    public boolean isFree = true;
 
     protected DBConn(int connID) {
         this.connID = connID;
@@ -30,7 +30,9 @@ public class DBConn {
         }
 
         try {
-            isAvailable = false;
+            if (this.isFree == true) {
+                isFree = false;
+            }
             this.DBID = DBID;
             conn = DriverManager.getConnection(connString);
             return true;
@@ -40,11 +42,19 @@ public class DBConn {
         }
     }
 
-    protected boolean Disconnect() {
+    protected boolean book() {
+        if (this.isFree == true) {
+            isFree = false;
+            return true;
+        }
+        return false;
+    }
+
+    public boolean Disconnect() {
         try {
             conn.close();
             this.DBID = null;
-            isAvailable = true;
+            isFree = true;
             return true;
 
         } catch (SQLException e) {

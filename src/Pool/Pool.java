@@ -6,6 +6,7 @@ import PropertyHandler.PropertyHandler;
 public enum Pool {
     INSTANCE;
     private PropertyHandler prop = new PropertyHandler("src/Pool/Pool.properties");
+    private static PropertyHandler stPropHandler = new PropertyHandler("src/Pool/Pool.properties");
 
     protected int MAX_CONN = Integer.parseInt(prop.getProp("MAX_CONN", "100"));
     
@@ -15,6 +16,7 @@ public enum Pool {
 
     protected int BASE_CONN = Integer.parseInt(prop.getProp("BASE_CONN", "20"));
 
+    protected static int MAX_RETRIES = Integer.parseInt(stPropHandler.getProp("MAX_RETRIES", "50"));
     protected ArrayList<DBConn> connections = new ArrayList<DBConn>();
 
     private Pool() {
