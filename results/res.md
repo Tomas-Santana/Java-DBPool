@@ -1,4 +1,4 @@
-|Num clientes|T sin pool (ms)|T con pool (ms)|
+|Num clientes|T con pool (ms)|T sin pool (ms)|
 |---|---|---|
 |10|1588|1661.4|
 |50|4069.6|2943.4|
